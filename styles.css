@@ -1,0 +1,430 @@
+*, *:before, *:after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: sans-serif;
+  background: #f9ecec; /* Нежно-розовый фон для всей страницы */
+}
+
+.app {
+  max-width: 360px;
+  margin: 20px auto;
+  background: #fef6f6;
+  padding: 15px;
+  border-radius: 16px;
+}
+
+.calendar-header {
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #6b5b5b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.month-nav button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b5b5b;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.month-nav button:hover {
+  background: rgba(107, 91, 91, 0.1);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: bold;
+  color: #a68c8c;
+  font-size: 12px;
+}
+
+.day.today {
+  outline: 2px solid #c27b7b;
+  font-weight: bold;
+  background: #fff5f5;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+  /* Убрал margin для компенсации gap, вернул только gap */
+}
+
+.day {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #fef6f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  -webkit-transition: background 0.2s ease;
+  -moz-transition: background 0.2s ease;
+  transition: background 0.2s ease;
+  font-size: 14px;
+}
+
+.day.prev-month {
+  background: #f0e8e8;
+  color: #a68c8c;
+  opacity: 0.6;
+}
+
+/* Эффект ховера для десктопов */
+.day:hover {
+  background: #ffe6e6 !important;
+}
+
+/* Эффект тапа для мобильных */
+.day:active {
+  background: #ffe6e6 !important;
+}
+
+/* Градиенты для фаз с более мягкими тонами */
+.day.menstruation {
+  background: -webkit-linear-gradient(135deg, #e89b9b 0%, #fef6f6 100%);
+  background: linear-gradient(135deg, #e89b9b 0%, #fef6f6 100%);
+}
+
+.day.follicular {
+  background: -webkit-linear-gradient(135deg, #a8d5a8 0%, #fef6f6 100%);
+  background: linear-gradient(135deg, #a8d5a8 0%, #fef6f6 100%);
+}
+
+.day.ovulation {
+  background: -webkit-linear-gradient(135deg, #d5a8d5 0%, #fef6f6 100%);
+  background: linear-gradient(135deg, #d5a8d5 0%, #fef6f6 100%);
+}
+
+.day.luteal {
+  background: -webkit-linear-gradient(135deg, #f4c78f 0%, #fef6f6 100%);
+  background: linear-gradient(135deg, #f4c78f 0%, #fef6f6 100%);
+}
+
+/* Ховер для дней с фазами */
+.day.menstruation:hover {
+  background: -webkit-linear-gradient(135deg, #e89b9b 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #e89b9b 0%, #ffe6e6 100%) !important;
+}
+
+.day.follicular:hover {
+  background: -webkit-linear-gradient(135deg, #a8d5a8 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #a8d5a8 0%, #ffe6e6 100%) !important;
+}
+
+.day.ovulation:hover {
+  background: -webkit-linear-gradient(135deg, #d5a8d5 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #d5a8d5 0%, #ffe6e6 100%) !important;
+}
+
+.day.luteal:hover {
+  background: -webkit-linear-gradient(135deg, #f4c78f 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #f4c78f 0%, #ffe6e6 100%) !important;
+}
+
+/* Тап для дней с фазами */
+.day.menstruation:active {
+  background: -webkit-linear-gradient(135deg, #e89b9b 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #e89b9b 0%, #ffe6e6 100%) !important;
+}
+
+.day.follicular:active {
+  background: -webkit-linear-gradient(135deg, #a8d5a8 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #a8d5a8 0%, #ffe6e6 100%) !important;
+}
+
+.day.ovulation:active {
+  background: -webkit-linear-gradient(135deg, #d5a8d5 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #d5a8d5 0%, #ffe6e6 100%) !important;
+}
+
+.day.luteal:active {
+  background: -webkit-linear-gradient(135deg, #f4c78f 0%, #ffe6e6 100%) !important;
+  background: linear-gradient(135deg, #f4c78f 0%, #ffe6e6 100%) !important;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: #fffafa;
+  padding: 20px;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 360px;
+  font-family: sans-serif;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+.modal-content input {
+  width: calc(100% - 20px);
+  padding: 10px;
+  font-size: 16px;
+  margin: 10px 0 20px 0;
+  border: 1px solid #d1c4c4;
+  border-radius: 8px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+}
+
+.phase-block {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.advice {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.warning {
+  background: #f9e4d4;
+  color: #a55422;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.buttons button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+button.cancel {
+  background: #f3e9e9;
+}
+
+.move-date-picker {
+  margin-top: 15px;
+  padding: 10px;
+  background: #fef6f6;
+  border-radius: 8px;
+  -webkit-transition: max-height 0.3s ease;
+  -moz-transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease;
+}
+
+.date-options {
+  display: flex;
+  overflow-x: auto;
+  gap: 10px;
+  padding-bottom: 5px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.date-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #d1c4c4;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 80px;
+  -webkit-transition: background 0.2s;
+  -moz-transition: background 0.2s;
+  transition: background 0.2s;
+}
+
+.date-option:hover,
+.date-option:active {
+  background: #ffe6e6;
+}
+
+.date-option.selected {
+  background: #e89b9b;
+  color: white;
+}
+
+.date-option .phase-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+}
+
+.date-option .phase-dot.good {
+  background: #a8d5a8;
+}
+
+.date-option .phase-dot.warning {
+  background: #f4c78f;
+}
+
+button.confirm-move {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #c2a3a3;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 10px;
+  min-height: 48px;
+}
+
+button.confirm-move:hover {
+  background: #b08f8f;
+}
+
+.cycle-inputs {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 14px;
+  align-items: center;
+}
+
+.cycle-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.cycle-inputs input {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #d1c4c4;
+  font-size: 14px;
+  min-height: 40px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+}
+
+#clear-cycle {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #e89b9b;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-transition: background 0.3s;
+  -moz-transition: background 0.3s;
+  transition: background 0.3s;
+  min-height: 40px;
+}
+
+#clear-cycle:hover {
+  background: #d88a8a;
+}
+
+.task-count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: #c2a3a3;
+  color: white;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+}
+
+.task-list {
+  max-height: 100px;
+  overflow-y: auto;
+  margin: 10px 0;
+  padding: 0;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 14px;
+  color: #6b5b5b;
+  border-bottom: 1px solid #eee;
+}
+
+.task-item button {
+  background: #e89b9b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+.task-item button.move-task {
+  background: #c2a3a3;
+}
+
+.task-item button:hover {
+  background: #d88a8a;
+}
+
+.task-item button.move-task:hover {
+  background: #b08f8f;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.dot.menstruation { background: #e89b9b; }
+.dot.follicular   { background: #a8d5a8; }
+.dot.ovulation    { background: #d5a8d5; }
+.dot.luteal       { background: #f4c78f; }
+.dot.gray         { background: #ccc; }

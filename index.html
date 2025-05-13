@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cycle Calendar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- Modal window -->
+<div class="modal" id="taskModal">
+  <div class="modal-content">
+    <h3>New Task</h3>
+    <input type="text" id="task-input" placeholder="Schedule a meeting">
+    <div class="task-list" id="task-list">
+      <!-- Task list will be added here -->
+    </div>
+    <div class="phase-block">
+      <div class="dot gray"></div>
+      <div>
+        <strong>Unknown Phase</strong><br>
+        <small>Please set cycle info</small>
+      </div>
+    </div>
+    <div class="advice">
+      <strong>Advice</strong><br>
+      Slow down. Delegate tasks and leave extra time.
+    </div>
+    <div class="warning">
+      ⚠️ Task may be difficult on this day
+    </div>
+    <div class="buttons">
+      <button class="dismiss">Cancel</button>
+      <button class="cancel">Keep</button>
+    </div>
+    <div class="move-date-picker" id="move-date-picker" style="display: none;">
+      <div class="date-options" id="date-options">
+        <!-- Даты будут добавлены через JS -->
+      </div>
+      <button class="confirm-move" id="confirm-move" style="display: none;">Confirm Move</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="calendar">
+    <div class="calendar-header">
+      <div id="month-name">April 2025</div>
+      <div class="month-nav">
+        <button id="prev-month">←</button>
+        <button id="next-month">→</button>
+      </div>
+    </div>
+    <div class="weekdays">
+      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+    </div>
+    <div class="days" id="calendar-days">
+      <!-- Days will be inserted here by JS -->
+    </div>
+  </div>
+  <div class="cycle-inputs">
+    <label>Start of cycle: <input type="date" id="start_date"></label>
+    <label>Cycle length (days): <input type="number" id="period" value="28"></label>
+    <button id="clear-cycle">Clear Cycle</button>
+  </div>
+</div>
+
+<script src="translate.js"></script>
+<script src="calendar.js"></script>
+</body>
+</html>
