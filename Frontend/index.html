@@ -12,30 +12,31 @@
   <div class="modal-content">
     <h3>New Task</h3>
     <input type="text" id="task-input" placeholder="Schedule a meeting">
+
     <div class="task-list" id="task-list">
       <!-- Task list will be added here -->
     </div>
-    <div class="phase-block">
-      <div class="dot gray"></div>
-      <div>
-        <strong>Unknown Phase</strong><br>
-        <small>Please set cycle info</small>
-      </div>
-    </div>
-    <div class="advice">
-      <strong>Advice</strong><br>
-      Slow down. Delegate tasks and leave extra time.
-    </div>
-    <div class="warning">
-      ⚠️ Task may be difficult on this day
-    </div>
+
+    <!-- блок с фазой -->
+    <div class="phase-block"></div>
+
+    <!-- стандартный совет -->
+    <div class="advice"></div>
+
+    <!-- совет от AI -->
+    <div class="advice-box" id="adviceMessage"></div>
+
+    <!-- предупреждение -->
+    <div class="warning" style="display:none;"></div>
+
     <div class="buttons">
       <button class="dismiss">Cancel</button>
       <button class="cancel">Keep</button>
     </div>
+
     <div class="move-date-picker" id="move-date-picker" style="display: none;">
       <div class="date-options" id="date-options">
-        <!-- Даты будут добавлены через JS -->
+        <!-- Dates will be added via JS -->
       </div>
       <button class="confirm-move" id="confirm-move" style="display: none;">Confirm Move</button>
     </div>
@@ -58,6 +59,7 @@
       <!-- Days will be inserted here by JS -->
     </div>
   </div>
+
   <div class="cycle-inputs">
     <label>Start of cycle: <input type="date" id="start_date"></label>
     <label>Cycle length (days): <input type="number" id="period" value="28"></label>

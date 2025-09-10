@@ -26,25 +26,55 @@ const monthsRu = [
 
 let currentMonth;
 let currentYear;
-let selectedTaskIndex = null; // Для хранения индекса задачи, которую переносим
-let selectedDate = null; // Текущая дата задачи
-let moveToDate = null; // Новая дата для переноса
+let selectedTaskIndex = null;
+let selectedDate = null;
+let moveToDate = null;
 
 function normalizeDate(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-// Функции для работы с задачами
-function saveTask(date, task) {
+// ====================== TASKS ==========================
+async function saveTask(date, taskText, phase = null) {
   const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   try {
-    let tasks = JSON.parse(localStorage.getItem('tasks') || '{}');
-    if (!tasks[key]) tasks[key] = [];
-    tasks[key].push(task);
-    localStorage.setItem('tasks', JSON.stringify(tasks));
+    let tasksStore = JSON.parse(localStorage.getItem('tasks') || '{}');
+    if (!tasksStore[key]) tasksStore[key] = [];
+
+    if (!phase) {
+      const startVal = localStorage.getItem('start_date') || document.getElementById('start_date')?.value;
+      const periodVal = parseInt(localStorage.getItem('period') || document.getElementById('period')?.value || '28');
+      const startDate = startVal ? new Date(startVal) : null;
+      if (startDate && !isNaN(periodVal)) {
+        const pf = getPhaseInfo(date, startDate, periodVal);
+        phase = pf.phase;
+      } else {
+        phase = 'unknown';
+      }
+    }
+
+    let adviceText = '';
+    try {
+      const resp = await fetch('http://127.0.0.1:8000/advice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: taskText, phase: phase, locale: 'ru' })
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        adviceText = json.suggestion || json.advice || json.verdict || '';
+      }
+    } catch (err) {
+      console.error('Ошибка при запросе совета:', err);
+    }
+
+    tasksStore[key].push({ text: taskText, advice: adviceText });
+    localStorage.setItem('tasks', JSON.stringify(tasksStore));
+
+    console.log(`Задача сохранена: ${taskText} (совет: ${adviceText})`);
   } catch (e) {
     console.error('Failed to save task:', e);
-    alert('Error saving task. Try disabling private browsing.');
+    alert('Error saving task.');
   }
 }
 
@@ -61,46 +91,47 @@ function getTasks(date) {
 
 function deleteTask(date, taskIndex) {
   const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  try {
-    let tasks = JSON.parse(localStorage.getItem('tasks') || '{}');
-    if (tasks[key] && tasks[key].length > taskIndex) {
-      tasks[key].splice(taskIndex, 1);
-      if (tasks[key].length === 0) {
-        delete tasks[key];
-      }
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-    }
-  } catch (e) {
-    console.error('Failed to delete task:', e);
-    alert('Error deleting task.');
+  let tasks = JSON.parse(localStorage.getItem('tasks') || '{}');
+  if (tasks[key] && tasks[key].length > taskIndex) {
+    tasks[key].splice(taskIndex, 1);
+    if (tasks[key].length === 0) delete tasks[key];
+    localStorage.setItem('tasks', JSON.stringify(tasks));
   }
 }
 
 function moveTask(fromDate, toDate, taskIndex) {
   const fromKey = `${fromDate.getFullYear()}-${fromDate.getMonth()}-${fromDate.getDate()}`;
   const toKey = `${toDate.getFullYear()}-${toDate.getMonth()}-${toDate.getDate()}`;
-  try {
-    let tasks = JSON.parse(localStorage.getItem('tasks') || '{}');
-    if (tasks[fromKey] && tasks[fromKey].length > taskIndex) {
-      const task = tasks[fromKey][taskIndex];
-      tasks[fromKey].splice(taskIndex, 1);
-      if (tasks[fromKey].length === 0) {
-        delete tasks[fromKey];
-      }
-      if (!tasks[toKey]) tasks[toKey] = [];
-      tasks[toKey].push(task);
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-    }
-  } catch (e) {
-    console.error('Failed to move task:', e);
-    alert('Error moving task.');
+  let tasks = JSON.parse(localStorage.getItem('tasks') || '{}');
+  if (tasks[fromKey] && tasks[fromKey].length > taskIndex) {
+    const task = tasks[fromKey][taskIndex];
+    tasks[fromKey].splice(taskIndex, 1);
+    if (tasks[fromKey].length === 0) delete tasks[fromKey];
+    if (!tasks[toKey]) tasks[toKey] = [];
+    tasks[toKey].push(task);
+    localStorage.setItem('tasks', JSON.stringify(tasks));
   }
 }
 
+function changeMonth(offset) {
+  currentMonth += offset;
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  } else if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  }
+  generateCalendar(currentMonth, currentYear);
+  updateCalendarWithPhases();
+}
+
+// ====================== CALENDAR ==========================
 document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   currentMonth = now.getMonth();
   currentYear = now.getFullYear();
+
   document.getElementById('start_date').value = localStorage.getItem('start_date') || null;
   document.getElementById('period').value = localStorage.getItem('period') || 28;
 
@@ -111,21 +142,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('prev-month').addEventListener('click', () => changeMonth(-1));
   document.getElementById('next-month').addEventListener('click', () => changeMonth(1));
   document.getElementById('clear-cycle').addEventListener('click', clearCycle);
-  document.querySelector('.cancel').addEventListener('click', closeModal);
-  document.querySelector('.dismiss').addEventListener('click', () => {
+
+  document.querySelector('.cancel').addEventListener('click', () => {
     const taskInput = document.querySelector('#task-input');
-    if (taskInput) {
-      taskInput.value = '';
+    const txt = taskInput.value.trim();
+    if (txt) {
+      const startInput = document.getElementById('start_date');
+      const periodInput = document.getElementById('period');
+      const startDate = startInput.value ? new Date(startInput.value) : null;
+      const period = periodInput.value ? parseInt(periodInput.value) : null;
+      const phaseInfo = getPhaseInfo(selectedDate, startDate, period);
+      saveTask(selectedDate, txt, phaseInfo.phase).then(() => {
+        generateCalendar(currentMonth, currentYear);
+        updateCalendarWithPhases();
+        openModal(selectedDate);
+      });
+    } else {
+      closeModal();
     }
+  });
+
+  document.querySelector('.dismiss').addEventListener('click', () => {
+    document.querySelector('#task-input').value = '';
     closeModal();
   });
 
-  // Закрытие модального окна по клику на фон
   document.getElementById('taskModal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeModal();
   });
-
-  // Закрытие модального окна по Esc
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
@@ -133,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function generateCalendar(month, year) {
   document.getElementById('month-name').textContent = `${monthsRu[month]} ${year}`;
-
   const daysContainer = document.getElementById('calendar-days');
   daysContainer.innerHTML = '';
 
@@ -155,11 +198,7 @@ function generateCalendar(month, year) {
     dayDiv.innerText = day;
 
     const today = new Date();
-    if (
-      day === today.getDate() &&
-      month === today.getMonth() &&
-      year === today.getFullYear()
-    ) {
+    if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
       dayDiv.classList.add('today');
     }
 
@@ -169,16 +208,22 @@ function generateCalendar(month, year) {
       taskCount.classList.add('task-count');
       taskCount.innerText = tasks.length;
       dayDiv.appendChild(taskCount);
+
+      const adviceTasks = tasks.filter(t => t && typeof t === 'object' && t.advice && t.advice.trim());
+      if (adviceTasks.length > 0) {
+        const icon = document.createElement('span');
+        icon.classList.add('advice-icon');
+        icon.textContent = '💡';
+        const combined = adviceTasks.map(t => (t.advice || '').replace(/\s+/g, ' ')).join(' • ');
+        icon.title = combined.length > 300 ? combined.slice(0, 300) + '…' : combined;
+        dayDiv.appendChild(icon);
+      }
     }
 
-    dayDiv.addEventListener('click', () => {
-      const selectedDate = new Date(year, month, day);
-      openModal(selectedDate);
-    });
+    dayDiv.addEventListener('click', () => openModal(new Date(year, month, day)));
     dayDiv.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      const selectedDate = new Date(year, month, day);
-      openModal(selectedDate);
+      openModal(new Date(year, month, day));
     }, { passive: false });
 
     daysContainer.appendChild(dayDiv);
@@ -187,86 +232,49 @@ function generateCalendar(month, year) {
   updateCalendarWithPhases();
 }
 
-function changeMonth(offset) {
-  currentMonth += offset;
-  if (currentMonth < 0) {
-    currentMonth = 11;
-    currentYear--;
-  } else if (currentMonth > 11) {
-    currentMonth = 0;
-    currentYear++;
-  }
-  generateCalendar(currentMonth, currentYear);
-  updateCalendarWithPhases();
-}
-
+// ====================== PHASES ==========================
 function clearPhases() {
   document.querySelectorAll('.day').forEach(day => {
     day.classList.remove('menstruation', 'follicular', 'ovulation', 'luteal');
   });
 }
 
-function addPhase(dayElement, phase) {
-  dayElement.classList.add(phase);
-}
-
 function calculatePhases(startDate, cycleLength) {
-  const daysContainer = document.getElementById('calendar-days');
-  const dayElements = daysContainer.querySelectorAll('.day:not(.prev-month)');
+  const dayElements = document.querySelectorAll('#calendar-days .day:not(.prev-month)');
   const baseDate = normalizeDate(new Date(startDate));
   const viewMonth = currentMonth;
   const viewYear = currentYear;
 
-  const dayMap = Array.from(dayElements)
-    .map(el => ({
-      el,
-      day: parseInt(el.innerText)
-    }))
-    .filter(d => !isNaN(d.day));
-
-  const numberOfCyclesToPredict = 3;
-
-  for (const { el, day } of dayMap) {
+  for (const el of dayElements) {
+    const day = parseInt(el.innerText);
+    if (isNaN(day)) continue;
     const currentDate = normalizeDate(new Date(viewYear, viewMonth, day));
 
-    for (let cycleOffset = 0; cycleOffset < numberOfCyclesToPredict; cycleOffset++) {
-      const cycleStartDate = new Date(baseDate);
-      cycleStartDate.setDate(baseDate.getDate() + cycleOffset * cycleLength);
-      const diff = Math.floor((currentDate - normalizeDate(cycleStartDate)) / (1000 * 3600 * 24));
+    const diff = Math.floor((currentDate - baseDate) / (1000 * 3600 * 24));
+    if (diff < 0) continue;
 
-      if (diff < 0 || diff >= cycleLength) continue;
+    let phase;
+    if (diff % cycleLength < 5) phase = 'menstruation';
+    else if (diff % cycleLength < cycleLength - 14 - 3) phase = 'follicular';
+    else if (diff % cycleLength < cycleLength - 14 + 1) phase = 'ovulation';
+    else phase = 'luteal';
 
-      let phase;
-      if (diff < 5) phase = 'menstruation';
-      else if (diff < cycleLength - 14 - 3) phase = 'follicular';
-      else if (diff < cycleLength - 14 + 1) phase = 'ovulation';
-      else phase = 'luteal';
-
-      addPhase(el, phase);
-      break;
-    }
+    el.classList.add(phase);
   }
 }
 
 function updateCalendarWithPhases() {
   const startInput = document.getElementById('start_date');
   const periodInput = document.getElementById('period');
-
   if (!startInput.value || !periodInput.value) return;
 
   const [year, month, day] = startInput.value.split('-').map(Number);
   const startDate = new Date(year, month - 1, day);
   const period = parseInt(periodInput.value);
-
-  try {
-    localStorage.setItem('start_date', startInput.value);
-    localStorage.setItem('period', periodInput.value);
-  } catch (e) {
-    console.error('Failed to save cycle data:', e);
-    alert('Error saving cycle data.');
-  }
-
   if (isNaN(startDate.getTime()) || isNaN(period)) return;
+
+  localStorage.setItem('start_date', startInput.value);
+  localStorage.setItem('period', periodInput.value);
 
   clearPhases();
   calculatePhases(startDate, period);
@@ -275,12 +283,8 @@ function updateCalendarWithPhases() {
 function clearCycle() {
   document.getElementById('start_date').value = '';
   document.getElementById('period').value = 28;
-  try {
-    localStorage.removeItem('start_date');
-    localStorage.removeItem('period');
-  } catch (e) {
-    console.error('Failed to clear cycle data:', e);
-  }
+  localStorage.removeItem('start_date');
+  localStorage.removeItem('period');
   clearPhases();
   generateCalendar(currentMonth, currentYear);
 }
@@ -290,55 +294,20 @@ function getPhaseInfo(date, startDate, period) {
     return { phase: 'unknown', label: 'Unknown Phase', message: 'Set cycle info', showWarning: false };
   }
 
-  const diff = Math.floor(
-    (normalizeDate(date) - normalizeDate(startDate)) / (1000 * 3600 * 24)
-  );
+  const diff = Math.floor((normalizeDate(date) - normalizeDate(startDate)) / (1000 * 3600 * 24));
+  const dayInCycle = diff % period;
 
-  let phase = '';
-  let label = '';
-  let message = '';
-  let showWarning = false;
-
-  if (diff < 0 || diff >= period) {
-    phase = 'unknown';
-    label = 'Unknown Phase';
-    message = 'Outside cycle period';
-    showWarning = false;
-  } else if (diff < 5) {
-    phase = 'menstruation';
-    label = 'Menstruation';
-    message = 'Minimize activity. Prioritize rest.';
-    showWarning = true;
-  } else if (diff < period - 14 - 3) {
-    phase = 'follicular';
-    label = 'Follicular Phase';
-    message = 'Good time for learning and planning.';
-    showWarning = false;
-  } else if (diff < period - 14 + 1) {
-    phase = 'ovulation';
-    label = 'Ovulation';
-    message = 'High energy. Ideal for meetings and social tasks.';
-    showWarning = false;
-  } else {
-    phase = 'luteal';
-    label = 'Luteal Phase';
-    message = 'Slow down. Delegate tasks and take breaks.';
-    showWarning = true;
-  }
-
-  return { phase, label, message, showWarning };
+  if (dayInCycle < 5) return { phase: 'menstruation', label: 'Menstruation', message: 'Minimize activity. Prioritize rest.', showWarning: true };
+  if (dayInCycle < period - 14 - 3) return { phase: 'follicular', label: 'Follicular Phase', message: 'Good time for learning and planning.', showWarning: false };
+  if (dayInCycle < period - 14 + 1) return { phase: 'ovulation', label: 'Ovulation', message: 'High energy. Ideal for meetings and social tasks.', showWarning: false };
+  return { phase: 'luteal', label: 'Luteal Phase', message: 'Slow down. Delegate tasks and take breaks.', showWarning: true };
 }
 
+// ====================== MODAL ==========================
 function openModal(date) {
+  selectedDate = date;
   const modal = document.getElementById('taskModal');
   modal.style.display = 'flex';
-
-  selectedDate = date; // Сохраняем текущую дату
-
-  const monthsRuShort = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
 
   const phaseBlock = document.querySelector('.phase-block');
   const adviceBlock = document.querySelector('.advice');
@@ -350,32 +319,38 @@ function openModal(date) {
   const confirmMoveBtn = document.querySelector('#confirm-move');
 
   taskInput.value = '';
-
-  // Отображаем список задач
-  const tasks = getTasks(date);
   taskList.innerHTML = '';
-  tasks.forEach((task, index) => {
+
+  const tasksRaw = getTasks(date);
+  tasksRaw.forEach((taskRaw, index) => {
+    const taskObj = (typeof taskRaw === 'string') ? { text: taskRaw, advice: '' } : taskRaw;
+
     const taskItem = document.createElement('div');
     taskItem.classList.add('task-item');
+    const adviceHtml = taskObj.advice ? `<div class="task-advice"><strong>Совет:</strong> ${taskObj.advice}</div>` : '';
     taskItem.innerHTML = `
-      <span>${task}</span>
-      <div>
+      <div class="task-body">
+        <span class="task-text">${taskObj.text}</span>
+        ${adviceHtml}
+      </div>
+      <div class="task-actions">
         <button class="move-task">Move</button>
         <button class="delete-task">Delete</button>
       </div>
     `;
+
     taskItem.querySelector('.delete-task').addEventListener('click', () => {
       deleteTask(date, index);
       generateCalendar(currentMonth, currentYear);
       updateCalendarWithPhases();
       openModal(date);
     });
+
     taskItem.querySelector('.move-task').addEventListener('click', () => {
-      selectedTaskIndex = index; // Сохраняем индекс задачи
+      selectedTaskIndex = index;
       moveDatePicker.style.display = 'block';
       dateOptions.innerHTML = '';
 
-      // Показываем ближайшие 7 дней для переноса
       const daysToShow = 7;
       const startInput = document.getElementById('start_date');
       const periodInput = document.getElementById('period');
@@ -385,15 +360,12 @@ function openModal(date) {
       for (let i = 1; i <= daysToShow; i++) {
         const nextDate = new Date(date);
         nextDate.setDate(date.getDate() + i);
-        const nextDay = nextDate.getDate();
-        const nextMonth = monthsRuShort[nextDate.getMonth()];
-        const nextYear = nextDate.getFullYear();
-
         const nextPhaseInfo = getPhaseInfo(nextDate, startDate, period);
+
         const dateOption = document.createElement('div');
         dateOption.classList.add('date-option');
         dateOption.innerHTML = `
-          <span>${nextDay} ${nextMonth}</span>
+          <span>${nextDate.getDate()}-${nextDate.getMonth() + 1}</span>
           <small>${nextPhaseInfo.label}</small>
           <div class="phase-dot ${nextPhaseInfo.showWarning ? 'warning' : 'good'}"></div>
         `;
@@ -406,6 +378,7 @@ function openModal(date) {
         dateOptions.appendChild(dateOption);
       }
     });
+
     taskList.appendChild(taskItem);
   });
 
@@ -413,8 +386,8 @@ function openModal(date) {
   const periodInput = document.getElementById('period');
   const startDate = startInput.value ? new Date(startInput.value) : null;
   const period = periodInput.value ? parseInt(periodInput.value) : null;
-
   const phaseInfo = getPhaseInfo(date, startDate, period);
+
   phaseBlock.innerHTML = `
     <div class="dot ${phaseInfo.phase}"></div>
     <div><strong>${phaseInfo.label}</strong><br><small>${phaseInfo.message}</small></div>
@@ -422,26 +395,12 @@ function openModal(date) {
   adviceBlock.innerHTML = `<strong>Advice</strong><br>${phaseInfo.message}`;
   warningBlock.style.display = phaseInfo.showWarning ? 'block' : 'none';
 
-  // Логика подтверждения переноса
   confirmMoveBtn.onclick = () => {
     if (selectedTaskIndex !== null && moveToDate) {
       moveTask(selectedDate, moveToDate, selectedTaskIndex);
       generateCalendar(currentMonth, currentYear);
       updateCalendarWithPhases();
       openModal(date);
-    }
-  };
-
-  // Сохранение задачи
-  const keepBtn = document.querySelector('.cancel');
-  keepBtn.onclick = () => {
-    if (taskInput.value.trim()) {
-      saveTask(date, taskInput.value.trim());
-      generateCalendar(currentMonth, currentYear);
-      updateCalendarWithPhases();
-      openModal(date);
-    } else {
-      closeModal();
     }
   };
 }
