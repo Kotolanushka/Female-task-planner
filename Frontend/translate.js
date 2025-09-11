@@ -3,12 +3,10 @@ class Translator {
         this.translations = new Map();
     }
 
-    // Добавление перевода
     addTranslation(key, value) {
         this.translations.set(key, value);
     }
 
-    // Получение перевода по ключу
     gettext(key) {
         return this.translations.get(key) || key;
     }

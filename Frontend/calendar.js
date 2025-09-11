@@ -62,10 +62,15 @@ async function saveTask(date, taskText, phase = null) {
       });
       if (resp.ok) {
         const json = await resp.json();
-        adviceText = json.suggestion || json.advice || json.verdict || '';
+        adviceText = json.suggestion || json.reason || '';
+        console.log('AI совет получен:', json);
+      } else {
+        console.warn('API вернул ошибку:', resp.status, resp.statusText);
+        adviceText = 'Совет недоступен (API ошибка)';
       }
     } catch (err) {
       console.error('Ошибка при запросе совета:', err);
+      adviceText = 'Совет недоступен (нет соединения)';
     }
 
     tasksStore[key].push({ text: taskText, advice: adviceText });
@@ -327,7 +332,7 @@ function openModal(date) {
 
     const taskItem = document.createElement('div');
     taskItem.classList.add('task-item');
-    const adviceHtml = taskObj.advice ? `<div class="task-advice"><strong>Совет:</strong> ${taskObj.advice}</div>` : '';
+    const adviceHtml = taskObj.advice ? `<div class="task-advice"><strong>💡 AI Совет:</strong> ${taskObj.advice}</div>` : '';
     taskItem.innerHTML = `
       <div class="task-body">
         <span class="task-text">${taskObj.text}</span>
